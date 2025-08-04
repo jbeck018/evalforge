@@ -1,0 +1,54 @@
+{
+  "recommendations": [
+    // Go development
+    "golang.go",
+    
+    // TypeScript/React development
+    "bradlc.vscode-tailwindcss",
+    "esbenp.prettier-vscode",
+    "dbaeumer.vscode-eslint",
+    "ms-vscode.vscode-typescript-next",
+    
+    // Docker and containers
+    "ms-azuretools.vscode-docker",
+    "ms-vscode-remote.remote-containers",
+    
+    // Database tools
+    "cweijan.vscode-postgresql-client2",
+    "cweijan.dbclient-jdbc",
+    
+    // YAML and configuration
+    "redhat.vscode-yaml",
+    
+    // Git tools
+    "eamodio.gitlens",
+    "donjayamanne.githistory",
+    
+    // HTTP client
+    "humao.rest-client",
+    
+    // Markdown
+    "yzhang.markdown-all-in-one",
+    
+    // Utilities
+    "ms-vscode.hexeditor",
+    "streetsidesoftware.code-spell-checker",
+    "gruntfuggly.todo-tree",
+    "oderwat.indent-rainbow",
+    "aaron-bond.better-comments",
+    
+    // Theme and icons
+    "pkief.material-icon-theme",
+    "github.github-vscode-theme",
+    
+    // Performance and debugging
+    "ms-vscode.vscode-json",
+    "formulahendry.auto-rename-tag",
+    "christian-kohler.path-intellisense"
+  ],
+  "unwantedRecommendations": [
+    "ms-vscode.vscode-typescript",
+    "hookyqr.beautify",
+    "ms-vscode.node-debug2"
+  ]
+}

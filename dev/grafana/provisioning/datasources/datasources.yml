@@ -1,0 +1,91 @@
+apiVersion: 1
+
+datasources:
+  # Prometheus datasource for metrics
+  - name: Prometheus
+    type: prometheus
+    access: proxy
+    url: http://prometheus:9090
+    isDefault: true
+    editable: true
+    version: 1
+    jsonData:
+      httpMethod: POST
+      timeInterval: "5s"
+      queryTimeout: "60s"
+    secureJsonData: {}
+
+  # ClickHouse datasource for analytics
+  - name: ClickHouse
+    type: grafana-clickhouse-datasource
+    access: proxy
+    url: http://clickhouse:8123
+    database: evalforge
+    user: evalforge
+    editable: true
+    version: 1
+    jsonData:
+      defaultDatabase: evalforge
+      dialTimeout: 10
+      queryTimeout: 60
+      httpHeaderName1: "X-ClickHouse-User"
+    secureJsonData:
+      password: evalforge_dev
+      httpHeaderValue1: evalforge
+
+  # PostgreSQL datasource for application data
+  - name: PostgreSQL
+    type: postgres
+    access: proxy
+    url: postgres:5432
+    database: evalforge
+    user: evalforge
+    editable: true
+    version: 1
+    jsonData:
+      sslmode: disable
+      maxOpenConns: 10
+      maxIdleConns: 2
+      connMaxLifetime: 14400
+      postgresVersion: 1500
+      timescaledb: false
+    secureJsonData:
+      password: evalforge_dev
+
+  # Jaeger datasource for tracing
+  - name: Jaeger
+    type: jaeger
+    access: proxy
+    url: http://jaeger:16686
+    editable: true
+    version: 1
+    jsonData:
+      tracesToLogs:
+        datasourceUid: 'loki'
+        tags: ['job', 'instance', 'pod', 'namespace']
+        mappedTags: [
+          {
+            key: 'service.name',
+            value: 'service'
+          }
+        ]
+        mapTagNamesEnabled: false
+        spanStartTimeShift: '1h'
+        spanEndTimeShift: '1h'
+        filterByTraceID: false
+        filterBySpanID: false
+
+  # Loki datasource for logs (if added later)
+  - name: Loki
+    type: loki
+    access: proxy
+    url: http://loki:3100
+    editable: true
+    version: 1
+    jsonData:
+      derivedFields:
+        - datasourceUid: 'jaeger'
+          matcherRegex: "traceID=(\\w+)"
+          name: 'TraceID'
+          url: '$${__value.raw}'
+          urlDisplayLabel: 'View Trace'

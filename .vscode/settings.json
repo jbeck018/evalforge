@@ -1,0 +1,175 @@
+{
+  // General editor settings
+  "editor.formatOnSave": true,
+  "editor.codeActionsOnSave": {
+    "source.fixAll": "explicit",
+    "source.organizeImports": "explicit"
+  },
+  "editor.rulers": [80, 120],
+  "editor.wordWrap": "wordWrapColumn",
+  "editor.wordWrapColumn": 120,
+
+  // Go settings
+  "go.formatTool": "goimports",
+  "go.lintTool": "golangci-lint",
+  "go.lintOnSave": "package",
+  "go.vetOnSave": "package",
+  "go.buildOnSave": "package",
+  "go.testOnSave": false,
+  "go.coverOnSave": false,
+  "go.useCodeSnippetsOnFunctionSuggest": true,
+  "go.gocodeAutoBuild": true,
+  "go.toolsManagement.autoUpdate": true,
+  "go.alternateTools": {
+    "go": "/usr/local/go/bin/go"
+  },
+  "go.testFlags": ["-v", "-race"],
+  "go.buildFlags": ["-race"],
+
+  // TypeScript/JavaScript settings
+  "typescript.format.enable": true,
+  "typescript.lint.enable": true,
+  "typescript.updateImportsOnFileMove.enabled": "always",
+  "javascript.format.enable": true,
+  "javascript.updateImportsOnFileMove.enabled": "always",
+  "typescript.preferences.importModuleSpecifier": "relative",
+
+  // ESLint settings
+  "eslint.enable": true,
+  "eslint.format.enable": true,
+  "eslint.workingDirectories": ["frontend"],
+
+  // Prettier settings
+  "prettier.enable": true,
+  "prettier.configPath": "./frontend/.prettierrc",
+
+  // File associations
+  "files.associations": {
+    "*.go": "go",
+    "*.mod": "go.mod",
+    "*.sum": "go.sum",
+    "Dockerfile*": "dockerfile",
+    "docker-compose*.yml": "dockercompose",
+    "*.sql": "sql",
+    "*.env*": "properties"
+  },
+
+  // File exclusions
+  "files.exclude": {
+    "**/node_modules": true,
+    "**/dist": true,
+    "**/build": true,
+    "**/.git": true,
+    "**/.svn": true,
+    "**/.hg": true,
+    "**/CVS": true,
+    "**/.DS_Store": true,
+    "**/tmp": true,
+    "**/bin": true,
+    "**/*.prof": true,
+    "**/*.out": true
+  },
+
+  // Search exclusions
+  "search.exclude": {
+    "**/node_modules": true,
+    "**/dist": true,
+    "**/build": true,
+    "**/tmp": true,
+    "**/bin": true,
+    "**/*.log": true,
+    "**/.git": true
+  },
+
+  // Terminal settings
+  "terminal.integrated.env.osx": {
+    "EVALFORGE_ENV": "development",
+    "EVALFORGE_LOG_LEVEL": "debug",
+    "EVALFORGE_MOCK_LLMS": "true"
+  },
+  "terminal.integrated.env.linux": {
+    "EVALFORGE_ENV": "development",
+    "EVALFORGE_LOG_LEVEL": "debug",
+    "EVALFORGE_MOCK_LLMS": "true"
+  },
+
+  // Docker settings
+  "docker.enableDockerComposeLanguageService": true,
+
+  // Git settings
+  "git.enableSmartCommit": true,
+  "git.confirmSync": false,
+  "git.autofetch": true,
+
+  // Explorer settings
+  "explorer.confirmDelete": false,
+  "explorer.confirmDragAndDrop": false,
+
+  // Breadcrumbs
+  "breadcrumbs.enabled": true,
+  "breadcrumbs.symbolPath": "on",
+
+  // Minimap
+  "editor.minimap.enabled": true,
+  "editor.minimap.maxColumn": 120,
+
+  // IntelliSense
+  "editor.quickSuggestions": {
+    "other": true,
+    "comments": false,
+    "strings": true
+  },
+
+  // Language-specific settings
+  "[go]": {
+    "editor.defaultFormatter": "golang.go",
+    "editor.tabSize": 4,
+    "editor.insertSpaces": false,
+    "editor.formatOnSave": true,
+    "editor.codeActionsOnSave": {
+      "source.organizeImports": "explicit"
+    }
+  },
+  "[typescript]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode",
+    "editor.tabSize": 2,
+    "editor.insertSpaces": true
+  },
+  "[typescriptreact]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode",
+    "editor.tabSize": 2,
+    "editor.insertSpaces": true
+  },
+  "[javascript]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode",
+    "editor.tabSize": 2,
+    "editor.insertSpaces": true
+  },
+  "[javascriptreact]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode",
+    "editor.tabSize": 2,
+    "editor.insertSpaces": true
+  },
+  "[json]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode",
+    "editor.tabSize": 2,
+    "editor.insertSpaces": true
+  },
+  "[yaml]": {
+    "editor.defaultFormatter": "redhat.vscode-yaml",
+    "editor.tabSize": 2,
+    "editor.insertSpaces": true
+  },
+  "[sql]": {
+    "editor.tabSize": 2,
+    "editor.insertSpaces": true
+  },
+  "[dockerfile]": {
+    "editor.tabSize": 2,
+    "editor.insertSpaces": true
+  },
+  "[makefile]": {
+    "editor.insertSpaces": false,
+    "editor.tabSize": 4
+  }
+}

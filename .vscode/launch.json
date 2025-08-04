@@ -1,0 +1,154 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Debug API Server",
+      "type": "go",
+      "request": "launch",
+      "mode": "debug",
+      "program": "${workspaceFolder}/backend/cmd/api",
+      "env": {
+        "EVALFORGE_ENV": "development",
+        "EVALFORGE_LOG_LEVEL": "debug",
+        "EVALFORGE_MOCK_LLMS": "true",
+        "PORT": "8000",
+        "POSTGRES_URL": "postgres://evalforge:evalforge_dev@localhost:5432/evalforge?sslmode=disable",
+        "CLICKHOUSE_URL": "clickhouse://evalforge:evalforge_dev@localhost:9000/evalforge",
+        "REDIS_URL": "redis://localhost:6379/0"
+      },
+      "args": [],
+      "showLog": true,
+      "trace": "verbose",
+      "preLaunchTask": "go: build api"
+    },
+    {
+      "name": "Debug Worker",
+      "type": "go",
+      "request": "launch",
+      "mode": "debug",
+      "program": "${workspaceFolder}/backend/cmd/worker",
+      "env": {
+        "EVALFORGE_ENV": "development",
+        "EVALFORGE_LOG_LEVEL": "debug",
+        "POSTGRES_URL": "postgres://evalforge:evalforge_dev@localhost:5432/evalforge?sslmode=disable",
+        "CLICKHOUSE_URL": "clickhouse://evalforge:evalforge_dev@localhost:9000/evalforge",
+        "REDIS_URL": "redis://localhost:6379/0"
+      },
+      "args": [],
+      "showLog": true,
+      "trace": "verbose",
+      "preLaunchTask": "go: build worker"
+    },
+    {
+      "name": "Debug Tests",
+      "type": "go",
+      "request": "launch",
+      "mode": "test",
+      "program": "${workspaceFolder}/backend",
+      "env": {
+        "EVALFORGE_ENV": "test",
+        "EVALFORGE_LOG_LEVEL": "info"
+      },
+      "args": [
+        "-test.v",
+        "-test.run",
+        "TestName"
+      ],
+      "showLog": true
+    },
+    {
+      "name": "Debug Current Test",
+      "type": "go",
+      "request": "launch",
+      "mode": "test",
+      "program": "${fileDirname}",
+      "env": {
+        "EVALFORGE_ENV": "test",
+        "EVALFORGE_LOG_LEVEL": "debug"
+      },
+      "args": [
+        "-test.v",
+        "-test.run",
+        "^${selectedText}$"
+      ],
+      "showLog": true
+    },
+    {
+      "name": "Debug Mock LLM",
+      "type": "go",
+      "request": "launch",
+      "mode": "debug",
+      "program": "${workspaceFolder}/dev/mock-llm",
+      "env": {
+        "OPENAI_PORT": "8080",
+        "ANTHROPIC_PORT": "8081",
+        "LOG_LEVEL": "debug",
+        "RESPONSE_DELAY_MIN_MS": "100",
+        "RESPONSE_DELAY_MAX_MS": "500",
+        "ERROR_RATE": "0.01"
+      },
+      "args": [],
+      "showLog": true
+    },
+    {
+      "name": "Debug Data Generator",
+      "type": "go",
+      "request": "launch",
+      "mode": "debug",
+      "program": "${workspaceFolder}/dev/data-generator",
+      "env": {
+        "CLICKHOUSE_URL": "clickhouse://evalforge:evalforge_dev@localhost:9000/evalforge"
+      },
+      "args": [
+        "--events-per-day=1000",
+        "--days-back=7",
+        "--verbose"
+      ],
+      "showLog": true
+    },
+    {
+      "name": "Attach to API Server",
+      "type": "go",
+      "request": "attach",
+      "mode": "local",
+      "processId": "${command:pickProcess}",
+      "showLog": true
+    },
+    {
+      "name": "Debug Frontend (Chrome)",
+      "type": "chrome",
+      "request": "launch",
+      "url": "http://localhost:3000",
+      "webRoot": "${workspaceFolder}/frontend/src",
+      "sourceMaps": true,
+      "trace": true,
+      "userDataDir": "${workspaceFolder}/.vscode/chrome-debug-data",
+      "runtimeArgs": [
+        "--disable-web-security",
+        "--disable-features=VizDisplayCompositor"
+      ]
+    },
+    {
+      "name": "Debug Frontend (Edge)",
+      "type": "msedge",
+      "request": "launch",
+      "url": "http://localhost:3000",
+      "webRoot": "${workspaceFolder}/frontend/src",
+      "sourceMaps": true,
+      "trace": true,
+      "userDataDir": "${workspaceFolder}/.vscode/edge-debug-data"
+    }
+  ],
+  "compounds": [
+    {
+      "name": "Debug Full Stack",
+      "configurations": [
+        "Debug API Server",
+        "Debug Worker",
+        "Debug Frontend (Chrome)"
+      ],
+      "stopAll": true,
+      "preLaunchTask": "Start Development Services"
+    }
+  ]
+}

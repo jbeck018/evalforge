@@ -1,0 +1,197 @@
+version: '3.8'
+
+services:
+  # Core database services
+  postgres:
+    image: postgres:17-alpine
+    container_name: evalforge_postgres
+    environment:
+      POSTGRES_DB: evalforge
+      POSTGRES_USER: evalforge
+      POSTGRES_PASSWORD: evalforge_dev
+      POSTGRES_INITDB_ARGS: "--encoding=UTF-8 --lc-collate=C --lc-ctype=C"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./dev/postgres/init.sql:/docker-entrypoint-initdb.d/01-init.sql
+      - ./dev/postgres/seed.sql:/docker-entrypoint-initdb.d/02-seed.sql
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U evalforge"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  clickhouse:
+    image: clickhouse/clickhouse-server:latest
+    container_name: evalforge_clickhouse
+    environment:
+      CLICKHOUSE_DB: evalforge
+      CLICKHOUSE_USER: evalforge
+      CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT: 1
+      CLICKHOUSE_PASSWORD: evalforge_dev
+    volumes:
+      - clickhouse_data:/var/lib/clickhouse
+      - ./dev/clickhouse/config.xml:/etc/clickhouse-server/config.xml
+      - ./dev/clickhouse/users.xml:/etc/clickhouse-server/users.xml
+      - ./dev/clickhouse/init.sql:/docker-entrypoint-initdb.d/init.sql
+    ports:
+      - "8123:8123"  # HTTP interface
+      - "9000:9000"  # Native interface
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8123/ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  redis:
+    image: redis:latest
+    container_name: evalforge_redis
+    command: redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru
+    volumes:
+      - redis_data:/data
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  # Object storage (S3 compatible)
+  minio:
+    image: minio/minio:latest
+    container_name: evalforge_minio
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: evalforge
+      MINIO_ROOT_PASSWORD: evalforge_dev
+      MINIO_REGION_NAME: us-east-1
+    volumes:
+      - minio_data:/data
+    ports:
+      - "9000:9000"  # API
+      - "9001:9001"  # Console
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 30s
+      timeout: 20s
+      retries: 3
+    restart: unless-stopped
+
+  # Mock LLM services
+  mock-llm:
+    build:
+      context: ./dev/mock-llm
+      dockerfile: Dockerfile
+    container_name: evalforge_mock_llm
+    environment:
+      OPENAI_PORT: 8080
+      ANTHROPIC_PORT: 8081
+      RESPONSE_DELAY_MIN_MS: 100
+      RESPONSE_DELAY_MAX_MS: 500
+      ERROR_RATE: 0.01
+      TIMEOUT_RATE: 0.005
+      LOG_LEVEL: info
+    ports:
+      - "8080:8080"  # OpenAI compatible
+      - "8081:8081"  # Anthropic compatible
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    restart: unless-stopped
+
+  # Development tools
+  mailhog:
+    image: mailhog/mailhog:latest
+    container_name: evalforge_mailhog
+    ports:
+      - "1025:1025"  # SMTP
+      - "8025:8025"  # Web UI
+    restart: unless-stopped
+
+  # API documentation
+  swagger-ui:
+    image: swaggerapi/swagger-ui:latest
+    container_name: evalforge_swagger
+    environment:
+      SWAGGER_JSON_URL: "http://localhost:8000/api/v1/openapi.json"
+      VALIDATOR_URL: "null"
+    ports:
+      - "8089:8080"
+    restart: unless-stopped
+
+  # Local observability stack
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: evalforge_prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+      - '--storage.tsdb.retention.time=7d'
+      - '--web.enable-lifecycle'
+    volumes:
+      - ./dev/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus_data:/prometheus
+    ports:
+      - "9090:9090"
+    restart: unless-stopped
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: evalforge_grafana
+    environment:
+      GF_SECURITY_ADMIN_PASSWORD: evalforge_dev
+      GF_USERS_ALLOW_SIGN_UP: false
+      GF_INSTALL_PLUGINS: grafana-clickhouse-datasource
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./dev/grafana/provisioning:/etc/grafana/provisioning
+      - ./dev/grafana/dashboards:/var/lib/grafana/dashboards
+    ports:
+      - "3001:3000"
+    depends_on:
+      - prometheus
+      - clickhouse
+    restart: unless-stopped
+
+  # Jaeger for distributed tracing
+  jaeger:
+    image: jaegertracing/all-in-one:latest
+    container_name: evalforge_jaeger
+    environment:
+      COLLECTOR_OTLP_ENABLED: true
+      COLLECTOR_ZIPKIN_HOST_PORT: ":9411"
+    ports:
+      - "16686:16686"  # Jaeger UI
+      - "14268:14268"  # Jaeger HTTP
+      - "14269:14269"  # Jaeger Health
+      - "4317:4317"    # OTLP gRPC
+      - "4318:4318"    # OTLP HTTP
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+    driver: local
+  clickhouse_data:
+    driver: local
+  redis_data:
+    driver: local
+  minio_data:
+    driver: local
+  prometheus_data:
+    driver: local
+  grafana_data:
+    driver: local
+
+networks:
+  default:
+    name: evalforge_dev
+    driver: bridge

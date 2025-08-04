@@ -1,0 +1,286 @@
+#!/bin/bash
+# EvalForge pre-commit hook for code quality
+
+set -e
+
+# Colors for output
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[0;33m'
+BLUE='\033[0;34m'
+NC='\033[0m' # No Color
+
+echo -e "${BLUE}🔍 Running EvalForge pre-commit checks...${NC}"
+echo -e "${BLUE}=====================================${NC}"
+
+# Track overall success
+OVERALL_SUCCESS=true
+
+# Function to run a check and track success
+run_check() {
+    local name=$1
+    local command=$2
+    local directory=${3:-"."}
+    
+    echo -e "${BLUE}▶ $name${NC}"
+    
+    if [ "$directory" != "." ]; then
+        cd "$directory"
+    fi
+    
+    if eval "$command" > /dev/null 2>&1; then
+        echo -e "${GREEN}  ✅ $name passed${NC}"
+        if [ "$directory" != "." ]; then
+            cd - > /dev/null
+        fi
+        return 0
+    else
+        echo -e "${RED}  ❌ $name failed${NC}"
+        OVERALL_SUCCESS=false
+        if [ "$directory" != "." ]; then
+            cd - > /dev/null
+        fi
+        return 1
+    fi
+}
+
+# Function to run a check with output
+run_check_with_output() {
+    local name=$1
+    local command=$2
+    local directory=${3:-"."}
+    
+    echo -e "${BLUE}▶ $name${NC}"
+    
+    if [ "$directory" != "." ]; then
+        cd "$directory"
+    fi
+    
+    if eval "$command"; then
+        echo -e "${GREEN}  ✅ $name passed${NC}"
+        if [ "$directory" != "." ]; then
+            cd - > /dev/null
+        fi
+        return 0
+    else
+        echo -e "${RED}  ❌ $name failed${NC}"
+        OVERALL_SUCCESS=false
+        if [ "$directory" != "." ]; then
+            cd - > /dev/null
+        fi
+        return 1
+    fi
+}
+
+# Check if we're in a Git repository
+if ! git rev-parse --git-dir > /dev/null 2>&1; then
+    echo -e "${RED}❌ Not in a Git repository${NC}"
+    exit 1
+fi
+
+# Get list of staged files
+STAGED_GO_FILES=$(git diff --cached --name-only --diff-filter=ACM | grep '\.go$' | grep -v vendor/ | grep -v _test.go || true)
+STAGED_JS_TS_FILES=$(git diff --cached --name-only --diff-filter=ACM | grep -E '\.(js|jsx|ts|tsx)$' | grep -v node_modules/ || true)
+STAGED_JSON_FILES=$(git diff --cached --name-only --diff-filter=ACM | grep '\.json$' | grep -v node_modules/ || true)
+
+echo -e "${YELLOW}📁 Staged files:${NC}"
+if [ -n "$STAGED_GO_FILES" ]; then
+    echo -e "${YELLOW}  Go files: $(echo $STAGED_GO_FILES | wc -w | tr -d ' ')${NC}"
+fi
+if [ -n "$STAGED_JS_TS_FILES" ]; then
+    echo -e "${YELLOW}  JS/TS files: $(echo $STAGED_JS_TS_FILES | wc -w | tr -d ' ')${NC}"
+fi
+if [ -n "$STAGED_JSON_FILES" ]; then
+    echo -e "${YELLOW}  JSON files: $(echo $STAGED_JSON_FILES | wc -w | tr -d ' ')${NC}"
+fi
+echo ""
+
+# Check 1: Go formatting
+if [ -n "$STAGED_GO_FILES" ] && [ -d "backend" ]; then
+    echo -e "${BLUE}🎨 Checking Go code formatting...${NC}"
+    
+    # Check if gofmt would make changes
+    UNFORMATTED_FILES=$(cd backend && echo "$STAGED_GO_FILES" | xargs gofmt -l 2>/dev/null || true)
+    
+    if [ -n "$UNFORMATTED_FILES" ]; then
+        echo -e "${RED}  ❌ Go formatting issues found:${NC}"
+        echo "$UNFORMATTED_FILES" | sed 's/^/    /'
+        echo -e "${YELLOW}  💡 Run: cd backend && gofmt -w .${NC}"
+        OVERALL_SUCCESS=false
+    else
+        echo -e "${GREEN}  ✅ Go formatting passed${NC}"
+    fi
+fi
+
+# Check 2: Go imports
+if [ -n "$STAGED_GO_FILES" ] && [ -d "backend" ] && command -v goimports >/dev/null 2>&1; then
+    echo -e "${BLUE}📦 Checking Go imports...${NC}"
+    
+    UNIMPORTED_FILES=$(cd backend && echo "$STAGED_GO_FILES" | xargs goimports -l 2>/dev/null || true)
+    
+    if [ -n "$UNIMPORTED_FILES" ]; then
+        echo -e "${RED}  ❌ Go import issues found:${NC}"
+        echo "$UNIMPORTED_FILES" | sed 's/^/    /'
+        echo -e "${YELLOW}  💡 Run: cd backend && goimports -w .${NC}"
+        OVERALL_SUCCESS=false
+    else
+        echo -e "${GREEN}  ✅ Go imports passed${NC}"
+    fi
+fi
+
+# Check 3: Go linting
+if [ -n "$STAGED_GO_FILES" ] && [ -d "backend" ] && command -v golangci-lint >/dev/null 2>&1; then
+    run_check "Go linting" "golangci-lint run --timeout=5m" "backend"
+fi
+
+# Check 4: Go vet
+if [ -n "$STAGED_GO_FILES" ] && [ -d "backend" ]; then
+    run_check "Go vet" "go vet ./..." "backend"
+fi
+
+# Check 5: Go security check (if gosec is available)
+if [ -n "$STAGED_GO_FILES" ] && [ -d "backend" ] && command -v gosec >/dev/null 2>&1; then
+    run_check "Go security scan" "gosec -quiet ./..." "backend"
+fi
+
+# Check 6: TypeScript/JavaScript linting
+if [ -n "$STAGED_JS_TS_FILES" ] && [ -d "frontend" ] && [ -f "frontend/package.json" ]; then
+    if [ -f "frontend/node_modules/.bin/eslint" ]; then
+        echo -e "${BLUE}🔍 Checking TypeScript/JavaScript linting...${NC}"
+        
+        cd frontend
+        if npm run lint > /dev/null 2>&1; then
+            echo -e "${GREEN}  ✅ JS/TS linting passed${NC}"
+        else
+            echo -e "${RED}  ❌ JS/TS linting failed${NC}"
+            echo -e "${YELLOW}  💡 Run: cd frontend && npm run lint:fix${NC}"
+            OVERALL_SUCCESS=false
+        fi
+        cd - > /dev/null
+    fi
+fi
+
+# Check 7: Prettier formatting
+if [ -n "$STAGED_JS_TS_FILES" ] && [ -d "frontend" ] && [ -f "frontend/package.json" ]; then
+    if [ -f "frontend/node_modules/.bin/prettier" ]; then
+        echo -e "${BLUE}🎨 Checking Prettier formatting...${NC}"
+        
+        cd frontend
+        # Check if prettier would make changes
+        if echo "$STAGED_JS_TS_FILES" | xargs npx prettier --check > /dev/null 2>&1; then
+            echo -e "${GREEN}  ✅ Prettier formatting passed${NC}"
+        else
+            echo -e "${RED}  ❌ Prettier formatting issues found${NC}"
+            echo -e "${YELLOW}  💡 Run: cd frontend && npm run format${NC}"
+            OVERALL_SUCCESS=false
+        fi
+        cd - > /dev/null
+    fi
+fi
+
+# Check 8: TypeScript compilation
+if [ -n "$STAGED_JS_TS_FILES" ] && [ -d "frontend" ] && [ -f "frontend/tsconfig.json" ]; then
+    run_check "TypeScript compilation" "npx tsc --noEmit" "frontend"
+fi
+
+# Check 9: JSON validation
+if [ -n "$STAGED_JSON_FILES" ]; then
+    echo -e "${BLUE}📄 Validating JSON files...${NC}"
+    
+    JSON_ERRORS=""
+    for file in $STAGED_JSON_FILES; do
+        if [ -f "$file" ]; then
+            if ! python3 -m json.tool "$file" > /dev/null 2>&1; then
+                JSON_ERRORS="$JSON_ERRORS\n    $file"
+            fi
+        fi
+    done
+    
+    if [ -n "$JSON_ERRORS" ]; then
+        echo -e "${RED}  ❌ JSON validation failed for:${NC}"
+        echo -e "$JSON_ERRORS"
+        OVERALL_SUCCESS=false
+    else
+        echo -e "${GREEN}  ✅ JSON validation passed${NC}"
+    fi
+fi
+
+# Check 10: Docker files validation (if docker is available)
+STAGED_DOCKER_FILES=$(git diff --cached --name-only --diff-filter=ACM | grep -E '(Dockerfile|docker-compose\.yml)' || true)
+if [ -n "$STAGED_DOCKER_FILES" ] && command -v docker >/dev/null 2>&1; then
+    echo -e "${BLUE}🐳 Validating Docker files...${NC}"
+    
+    DOCKER_ERRORS=""
+    for file in $STAGED_DOCKER_FILES; do
+        if [[ "$file" == *"Dockerfile"* ]]; then
+            if ! docker build -f "$file" -t temp-build-test . > /dev/null 2>&1; then
+                DOCKER_ERRORS="$DOCKER_ERRORS\n    $file (Dockerfile syntax error)"
+            fi
+        elif [[ "$file" == *"docker-compose"* ]]; then
+            if ! docker-compose -f "$file" config > /dev/null 2>&1; then
+                DOCKER_ERRORS="$DOCKER_ERRORS\n    $file (docker-compose syntax error)"
+            fi
+        fi
+    done
+    
+    if [ -n "$DOCKER_ERRORS" ]; then
+        echo -e "${RED}  ❌ Docker validation failed for:${NC}"
+        echo -e "$DOCKER_ERRORS"
+        OVERALL_SUCCESS=false
+    else
+        echo -e "${GREEN}  ✅ Docker validation passed${NC}"
+    fi
+fi
+
+# Check 11: Commit message format (basic check)
+COMMIT_MSG_FILE=$(git rev-parse --git-dir)/COMMIT_EDITMSG
+if [ -f "$COMMIT_MSG_FILE" ]; then
+    COMMIT_MSG=$(head -n 1 "$COMMIT_MSG_FILE")
+    
+    # Basic checks for commit message
+    if [ ${#COMMIT_MSG} -lt 10 ]; then
+        echo -e "${YELLOW}⚠️  Commit message is quite short (${#COMMIT_MSG} chars)${NC}"
+        echo -e "${YELLOW}  💡 Consider a more descriptive commit message${NC}"
+    elif [ ${#COMMIT_MSG} -gt 72 ]; then
+        echo -e "${YELLOW}⚠️  Commit message is quite long (${#COMMIT_MSG} chars)${NC}"
+        echo -e "${YELLOW}  💡 Consider keeping the first line under 72 characters${NC}"
+    fi
+fi
+
+# Check 12: Large files check
+LARGE_FILES=$(git diff --cached --name-only --diff-filter=ACM | xargs ls -la 2>/dev/null | awk '$5 > 1000000 {print $9, "(" $5 " bytes)"}' || true)
+if [ -n "$LARGE_FILES" ]; then
+    echo -e "${YELLOW}⚠️  Large files detected:${NC}"
+    echo "$LARGE_FILES" | sed 's/^/    /'
+    echo -e "${YELLOW}  💡 Consider using Git LFS for large files${NC}"
+fi
+
+# Check 13: TODO/FIXME detection in staged files
+TODO_FILES=$(git diff --cached --name-only --diff-filter=ACM | xargs grep -l -E "(TODO|FIXME|XXX|HACK)" 2>/dev/null || true)
+if [ -n "$TODO_FILES" ]; then
+    echo -e "${YELLOW}📝 Files with TODO/FIXME comments:${NC}"
+    echo "$TODO_FILES" | sed 's/^/    /'
+    echo -e "${YELLOW}  💡 Consider addressing these before committing${NC}"
+fi
+
+echo ""
+echo -e "${BLUE}===========================================${NC}"
+
+# Final result
+if [ "$OVERALL_SUCCESS" = true ]; then
+    echo -e "${GREEN}🎉 All pre-commit checks passed!${NC}"
+    echo -e "${GREEN}✅ Ready to commit${NC}"
+    exit 0
+else
+    echo -e "${RED}❌ Some pre-commit checks failed${NC}"
+    echo -e "${RED}🛑 Commit blocked${NC}"
+    echo ""
+    echo -e "${YELLOW}💡 Quick fixes:${NC}"
+    echo -e "${YELLOW}  • Format code: make fmt${NC}"
+    echo -e "${YELLOW}  • Fix linting: make lint${NC}"
+    echo -e "${YELLOW}  • Run tests: make test${NC}"
+    echo ""
+    echo -e "${BLUE}🔧 To skip these checks (not recommended):${NC}"
+    echo -e "${BLUE}  git commit --no-verify${NC}"
+    exit 1
+fi
