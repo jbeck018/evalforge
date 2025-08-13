@@ -13,6 +13,7 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - ./dev/postgres/init.sql:/docker-entrypoint-initdb.d/01-init.sql
+      - ./dev/postgres/evaluation_schema.sql:/docker-entrypoint-initdb.d/evaluation_schema.sql
       - ./dev/postgres/seed.sql:/docker-entrypoint-initdb.d/02-seed.sql
     ports:
       - "5432:5432"
@@ -33,9 +34,6 @@ services:
       CLICKHOUSE_PASSWORD: evalforge_dev
     volumes:
       - clickhouse_data:/var/lib/clickhouse
-      - ./dev/clickhouse/config.xml:/etc/clickhouse-server/config.xml
-      - ./dev/clickhouse/users.xml:/etc/clickhouse-server/users.xml
-      - ./dev/clickhouse/init.sql:/docker-entrypoint-initdb.d/init.sql
     ports:
       - "8123:8123"  # HTTP interface
       - "9000:9000"  # Native interface
@@ -73,7 +71,7 @@ services:
     volumes:
       - minio_data:/data
     ports:
-      - "9000:9000"  # API
+      - "9002:9000"  # API
       - "9001:9001"  # Console
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
@@ -104,6 +102,52 @@ services:
       interval: 10s
       timeout: 5s
       retries: 3
+    restart: unless-stopped
+
+  # Backend API service
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: evalforge_backend
+    environment:
+      POSTGRES_URL: postgres://evalforge:evalforge_dev@postgres:5432/evalforge?sslmode=disable
+      CLICKHOUSE_URL: clickhouse://evalforge:evalforge_dev@clickhouse:9000/evalforge
+      REDIS_URL: redis://redis:6379/0
+      JWT_SECRET: evalforge_dev_secret_key_change_in_production
+      PORT: 8088
+      LOG_LEVEL: debug
+      CORS_ORIGINS: http://localhost:3000,http://localhost:3001
+      ANTHROPIC_KEY: ${ANTHROPIC_KEY}
+    ports:
+      - "8088:8088"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - ./backend:/app
+    command: go run .
+    restart: unless-stopped
+
+  # Frontend dashboard
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: evalforge_frontend
+    environment:
+      VITE_API_URL: http://localhost:8088
+      VITE_MOCK_LLM_URL: http://localhost:8080
+    ports:
+      - "3000:3000"
+    depends_on:
+      - backend
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    command: npm run dev -- --host
     restart: unless-stopped
 
   # Development tools

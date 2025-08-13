@@ -1,122 +1,16 @@
-# Prometheus configuration for EvalForge development environment
-
 global:
   scrape_interval: 15s
   evaluation_interval: 15s
-  external_labels:
-    environment: 'development'
-    cluster: 'evalforge-local'
 
-# Rules for alerting (development alerts)
-rule_files:
-  - "alert_rules.yml"
-
-# Scrape configurations
 scrape_configs:
-  # Prometheus itself
   - job_name: 'prometheus'
     static_configs:
       - targets: ['localhost:9090']
-    scrape_interval: 30s
-    metrics_path: '/metrics'
 
-  # EvalForge API Server
-  - job_name: 'evalforge-api'
+  - job_name: 'backend'
     static_configs:
-      - targets: ['host.docker.internal:8000']
-    scrape_interval: 10s
-    metrics_path: '/metrics'
-    scrape_timeout: 5s
-    honor_labels: true
-    params:
-      format: ['prometheus']
+      - targets: ['backend:8088']
 
-  # EvalForge Worker
-  - job_name: 'evalforge-worker'
-    static_configs:
-      - targets: ['host.docker.internal:8001']
-    scrape_interval: 15s
-    metrics_path: '/metrics'
-    scrape_timeout: 5s
-
-  # Mock LLM Service
-  - job_name: 'mock-llm'
-    static_configs:
-      - targets: ['mock-llm:8080', 'mock-llm:8081']
-    scrape_interval: 30s
-    metrics_path: '/metrics'
-    scrape_timeout: 5s
-
-  # PostgreSQL Exporter
-  - job_name: 'postgres'
-    static_configs:
-      - targets: ['postgres-exporter:9187']
-    scrape_interval: 30s
-    metrics_path: '/metrics'
-    scrape_timeout: 10s
-
-  # ClickHouse Metrics
   - job_name: 'clickhouse'
     static_configs:
       - targets: ['clickhouse:8123']
-    scrape_interval: 30s
-    metrics_path: '/metrics'
-    scrape_timeout: 10s
-    params:
-      query: ['SELECT * FROM system.metrics FORMAT Prometheus']
-
-  # Redis Exporter
-  - job_name: 'redis'
-    static_configs:
-      - targets: ['redis-exporter:9121']
-    scrape_interval: 30s
-    metrics_path: '/metrics'
-    scrape_timeout: 5s
-
-  # Docker Container Metrics (cAdvisor)
-  - job_name: 'cadvisor'
-    static_configs:
-      - targets: ['cadvisor:8080']
-    scrape_interval: 30s
-    metrics_path: '/metrics'
-    scrape_timeout: 10s
-
-  # Node Exporter (system metrics)
-  - job_name: 'node'
-    static_configs:
-      - targets: ['node-exporter:9100']
-    scrape_interval: 30s
-    metrics_path: '/metrics'
-    scrape_timeout: 10s
-
-  # MinIO metrics
-  - job_name: 'minio'
-    static_configs:
-      - targets: ['minio:9000']
-    scrape_interval: 30s
-    metrics_path: '/minio/v2/metrics/cluster'
-    scrape_timeout: 10s
-
-# Alertmanager configuration (for development alerts)
-alerting:
-  alertmanagers:
-    - static_configs:
-        - targets:
-          - alertmanager:9093
-      timeout: 10s
-      api_version: v2
-
-# Storage configuration
-storage:
-  tsdb:
-    path: /prometheus
-    retention.time: 7d
-    retention.size: 1GB
-    wal-compression: true
-
-# Remote write configuration (optional, for external monitoring)
-# remote_write:
-#   - url: "https://your-external-prometheus.com/api/v1/write"
-#     basic_auth:
-#       username: "your-username"
-#       password: "your-password"

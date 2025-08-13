@@ -1,4 +1,5 @@
 import { useQuery } from '@tanstack/react-query'
+import { useNavigate } from 'react-router-dom'
 import { 
   TrendingUp, 
   TrendingDown, 
@@ -13,9 +14,24 @@ import {
 import { api } from '../utils/api'
 import MetricCard from '../components/MetricCard'
 import RecentActivity from '../components/RecentActivity'
+import RecentEvaluations from '../components/RecentEvaluations'
 import CostChart from '../components/charts/CostChart'
 import LatencyChart from '../components/charts/LatencyChart'
 import ErrorRateChart from '../components/charts/ErrorRateChart'
+
+interface ProjectAnalytics {
+  total_events: number
+  total_cost: number
+  average_latency: number
+  error_rate: number
+}
+
+interface Project {
+  id: number
+  name: string
+  api_key: string
+  created_at: string
+}
 
 interface DashboardStats {
   total_events: number
@@ -32,14 +48,87 @@ interface DashboardStats {
 }
 
 export default function DashboardPage() {
-  const { data: stats, isLoading } = useQuery({
-    queryKey: ['dashboard-stats'],
+  const navigate = useNavigate()
+  
+  // First fetch all projects
+  const { data: projects, isLoading: projectsLoading } = useQuery({
+    queryKey: ['projects'],
     queryFn: async () => {
-      const response = await api.get('/api/dashboard/stats')
-      return response.data as DashboardStats
+      const response = await api.get('/api/projects')
+      return response.data.projects as Project[]
     },
-    refetchInterval: 30000, // Refresh every 30 seconds
+    refetchInterval: 30000,
   })
+
+  // Then fetch analytics for each project and aggregate
+  const { data: stats, isLoading: statsLoading } = useQuery({
+    queryKey: ['dashboard-stats', projects],
+    queryFn: async () => {
+      if (!projects || projects.length === 0) {
+        return {
+          total_events: 0,
+          total_cost: 0,
+          average_latency: 0,
+          error_rate: 0,
+          active_projects: 0,
+          events_24h: 0,
+          cost_24h: 0,
+          events_change: 0,
+          cost_change: 0,
+          latency_change: 0,
+          error_rate_change: 0,
+        } as DashboardStats
+      }
+
+      // Fetch analytics for each project
+      const analyticsPromises = projects.map(project => 
+        api.get(`/api/projects/${project.id}/analytics/summary`)
+          .then(res => res.data.summary || res.data)
+          .catch(() => ({
+            total_events: 0,
+            total_cost: 0,
+            average_latency: 0,
+            error_rate: 0,
+          }))
+      )
+
+      const projectAnalytics = await Promise.all(analyticsPromises)
+
+      // Aggregate the data
+      const aggregated = projectAnalytics.reduce((acc, curr) => ({
+        total_events: acc.total_events + (curr.total_events || 0),
+        total_cost: acc.total_cost + (curr.total_cost || 0),
+        average_latency: acc.average_latency + (curr.average_latency || 0),
+        error_rate: acc.error_rate + (curr.error_rate || 0),
+      }), {
+        total_events: 0,
+        total_cost: 0,
+        average_latency: 0,
+        error_rate: 0,
+      })
+
+      // Calculate averages
+      const projectCount = projectAnalytics.filter(p => p.total_events > 0).length || 1
+      
+      return {
+        total_events: aggregated.total_events,
+        total_cost: aggregated.total_cost,
+        average_latency: aggregated.average_latency / projectCount,
+        error_rate: aggregated.error_rate / projectCount,
+        active_projects: projects.length,
+        events_24h: 0, // Would need time-series data to calculate 24h metrics
+        cost_24h: 0, // Would need time-series data to calculate 24h metrics
+        events_change: 0, // Would need historical data to calculate changes
+        cost_change: 0,
+        latency_change: 0,
+        error_rate_change: 0,
+      } as DashboardStats
+    },
+    enabled: !!projects,
+    refetchInterval: 30000,
+  })
+
+  const isLoading = projectsLoading || statsLoading
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('en-US', {
@@ -180,8 +269,8 @@ export default function DashboardPage() {
         </div>
         
         <div className="card p-6">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">Recent Activity</h3>
-          <RecentActivity />
+          <h3 className="text-lg font-semibold text-gray-900 mb-4">Recent Evaluations</h3>
+          <RecentEvaluations />
         </div>
       </div>
 
@@ -189,21 +278,30 @@ export default function DashboardPage() {
       <div className="card p-6">
         <h3 className="text-lg font-semibold text-gray-900 mb-4">Quick Actions</h3>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <button className="btn-secondary btn-md text-left">
+          <button 
+            onClick={() => navigate('/projects')}
+            className="btn-secondary btn-md text-left"
+          >
             <div>
               <p className="font-medium">Create Project</p>
               <p className="text-sm text-gray-500">Set up a new monitoring project</p>
             </div>
           </button>
           
-          <button className="btn-secondary btn-md text-left">
+          <button 
+            onClick={() => projects?.[0] && navigate(`/projects/${projects[0].id}/analytics`)}
+            className="btn-secondary btn-md text-left"
+          >
             <div>
               <p className="font-medium">View Analytics</p>
               <p className="text-sm text-gray-500">Explore detailed performance metrics</p>
             </div>
           </button>
           
-          <button className="btn-secondary btn-md text-left">
+          <button 
+            onClick={() => navigate('/settings')}
+            className="btn-secondary btn-md text-left"
+          >
             <div>
               <p className="font-medium">Setup SDK</p>
               <p className="text-sm text-gray-500">Integrate with your application</p>

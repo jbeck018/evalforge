@@ -1,144 +1,20 @@
 <?xml version="1.0"?>
 <clickhouse>
-    <!-- Development configuration for EvalForge ClickHouse -->
-    
-    <!-- Listen on all interfaces for development -->
-    <listen_host>0.0.0.0</listen_host>
-    
-    <!-- HTTP and native protocol ports -->
-    <http_port>8123</http_port>
-    <tcp_port>9000</tcp_port>
-    
-    <!-- Inter-server communication (not needed for single-node dev setup) -->
-    <interserver_http_port>9009</interserver_http_port>
-    
-    <!-- Data directory -->
-    <path>/var/lib/clickhouse/</path>
-    <tmp_path>/var/lib/clickhouse/tmp/</tmp_path>
-    
-    <!-- User files directory -->
-    <user_files_path>/var/lib/clickhouse/user_files/</user_files_path>
-    
-    <!-- Access control -->
-    <users_config>users.xml</users_config>
-    
-    <!-- Default profile settings -->
-    <default_profile>default</default_profile>
-    <default_database>evalforge</default_database>
-    
-    <!-- Logging configuration for development -->
     <logger>
-        <level>information</level>
+        <level>trace</level>
         <log>/var/log/clickhouse-server/clickhouse-server.log</log>
         <errorlog>/var/log/clickhouse-server/clickhouse-server.err.log</errorlog>
         <size>1000M</size>
-        <count>3</count>
+        <count>10</count>
     </logger>
     
-    <!-- Performance settings optimized for development -->
-    <max_connections>1000</max_connections>
-    <keep_alive_timeout>10</keep_alive_timeout>
-    <max_concurrent_queries>200</max_concurrent_queries>
+    <listen_host>0.0.0.0</listen_host>
+    <http_port>8123</http_port>
+    <tcp_port>9000</tcp_port>
     
-    <!-- Memory limits for development environment -->
-    <max_server_memory_usage>2000000000</max_server_memory_usage> <!-- 2GB -->
-    <max_memory_usage>1000000000</max_memory_usage> <!-- 1GB per query -->
+    <max_concurrent_queries>100</max_concurrent_queries>
+    <max_connections>4096</max_connections>
     
-    <!-- Compression settings -->
-    <compression>
-        <case>
-            <method>zstd</method>
-            <level>3</level>
-        </case>
-    </compression>
-    
-    <!-- Query log for development debugging -->
-    <query_log>
-        <database>system</database>
-        <table>query_log</table>
-        <partition_by>toYYYYMM(event_date)</partition_by>
-        <flush_interval_milliseconds>7500</flush_interval_milliseconds>
-    </query_log>
-    
-    <!-- Query thread log -->
-    <query_thread_log>
-        <database>system</database>
-        <table>query_thread_log</table>
-        <partition_by>toYYYYMM(event_date)</partition_by>
-        <flush_interval_milliseconds>7500</flush_interval_milliseconds>
-    </query_thread_log>
-    
-    <!-- Part log for debugging -->
-    <part_log>
-        <database>system</database>
-        <table>part_log</table>
-        <partition_by>toYYYYMM(event_date)</partition_by>
-        <flush_interval_milliseconds>7500</flush_interval_milliseconds>
-    </part_log>
-    
-    <!-- Development-friendly settings -->
-    <query_masking_rules>
-        <rule>
-            <name>hide_api_keys</name>
-            <regexp>(?i)(api[_-]?key|token|secret)["\s]*[:=]["\s]*([a-zA-Z0-9_-]{10,})</regexp>
-            <replace>\1: [HIDDEN]</replace>
-        </rule>
-    </query_masking_rules>
-    
-    <!-- Timezone -->
-    <timezone>UTC</timezone>
-    
-    <!-- Format schema -->
-    <format_schema_path>/var/lib/clickhouse/format_schemas/</format_schema_path>
-    
-    <!-- Development-specific settings -->
-    <background_pool_size>4</background_pool_size>
-    <background_merges_mutations_concurrency_ratio>4</background_merges_mutations_concurrency_ratio>
-    
-    <!-- Dictionaries -->
-    <dictionaries_config>*_dictionary.xml</dictionaries_config>
-    
-    <!-- Distributed DDL -->
-    <distributed_ddl>
-        <path>/clickhouse/task_queue/ddl</path>
-    </distributed_ddl>
-    
-    <!-- Network configuration -->
-    <networks>
-        <ip>::/0</ip>
-    </networks>
-    
-    <!-- Built-in configurations -->
-    <builtin_dictionaries_reload_interval>3600</builtin_dictionaries_reload_interval>
-    
-    <!-- Allow experimental features for development -->
-    <allow_experimental_window_functions>1</allow_experimental_window_functions>
-    <allow_experimental_geo_types>1</allow_experimental_geo_types>
-    
-    <!-- Disable security restrictions for development -->
-    <custom_settings_prefixes>evalforge_</custom_settings_prefixes>
-    
-    <!-- Development HTTP handlers -->
-    <http_handlers>
-        <rule>
-            <url>/health</url>
-            <methods>GET</methods>
-            <handler>
-                <type>static</type>
-                <status>200</status>
-                <content_type>application/json</content_type>
-                <response_content>{"status": "ok", "service": "clickhouse"}</response_content>
-            </handler>
-        </rule>
-        <rule>
-            <url>/ping</url>
-            <methods>GET</methods>
-            <handler>
-                <type>static</type>
-                <status>200</status>
-                <content_type>text/plain</content_type>
-                <response_content>Ok.</response_content>
-            </handler>
-        </rule>
-    </http_handlers>
+    <keep_alive_timeout>3</keep_alive_timeout>
+    <max_open_files>262144</max_open_files>
 </clickhouse>

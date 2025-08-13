@@ -56,7 +56,7 @@ class EvalForge:
         self.flush_interval = flush_interval
         self.max_retries = max_retries
         self.timeout = timeout
-        self.debug = debug
+        self.debug = True  # Force debug mode for testing
 
         # Event buffer and threading
         self._event_queue: queue.Queue = queue.Queue()
@@ -122,18 +122,21 @@ class EvalForge:
         if not events:
             return
 
-        url = f"{self.base_url}/api/events"
+        url = f"{self.base_url}/sdk/v1/projects/{self.project_id}/events/batch"
         headers = {
-            "Authorization": f"Bearer {self.api_key}",
+            "X-API-Key": self.api_key,
             "Content-Type": "application/json",
         }
 
         payload = {
-            "events": [event.dict() for event in events]
+            "events": [event.model_dump(mode='json') for event in events]
         }
 
         for attempt in range(self.max_retries + 1):
             try:
+                if self.debug:
+                    print(f"EvalForge: Sending request to {url}")
+                    print(f"EvalForge: Headers: {headers}")
                 response = requests.post(
                     url,
                     json=payload,

@@ -1,0 +1,106 @@
+{
+  "passed": 22,
+  "failed": 3,
+  "tests": [
+    {
+      "name": "Backend Health Check",
+      "status": "passed"
+    },
+    {
+      "name": "Frontend Accessibility",
+      "status": "passed"
+    },
+    {
+      "name": "WebSocket Endpoint",
+      "status": "passed"
+    },
+    {
+      "name": "User Registration",
+      "status": "passed"
+    },
+    {
+      "name": "User Login",
+      "status": "passed"
+    },
+    {
+      "name": "Create Project",
+      "status": "passed"
+    },
+    {
+      "name": "Get Project Details",
+      "status": "passed"
+    },
+    {
+      "name": "Get Project Settings",
+      "status": "passed"
+    },
+    {
+      "name": "Update Project Settings",
+      "status": "passed"
+    },
+    {
+      "name": "Ingest Events via API",
+      "status": "passed"
+    },
+    {
+      "name": "Retrieve Events",
+      "status": "passed"
+    },
+    {
+      "name": "Get Analytics Summary",
+      "status": "passed"
+    },
+    {
+      "name": "Get Cost Analytics",
+      "status": "passed"
+    },
+    {
+      "name": "Get Latency Analytics",
+      "status": "passed"
+    },
+    {
+      "name": "Get Error Analytics",
+      "status": "passed"
+    },
+    {
+      "name": "Create Evaluation",
+      "status": "failed"
+    },
+    {
+      "name": "List Evaluations",
+      "status": "passed"
+    },
+    {
+      "name": "Get Evaluation Details",
+      "status": "failed"
+    },
+    {
+      "name": "API Response Time (<500ms)",
+      "status": "passed"
+    },
+    {
+      "name": "Concurrent Request Handling",
+      "status": "passed"
+    },
+    {
+      "name": "Unauthorized Access Prevention",
+      "status": "passed"
+    },
+    {
+      "name": "Invalid Token Rejection",
+      "status": "passed"
+    },
+    {
+      "name": "SQL Injection Protection",
+      "status": "passed"
+    },
+    {
+      "name": "Delete Evaluation",
+      "status": "failed"
+    },
+    {
+      "name": "Delete Project",
+      "status": "passed"
+    }
+  ]
+}
